@@ -39,7 +39,7 @@ class opendj (
 # props_file Contains passwords, thus (temporarily) stored in /dev/shm
   $props_file       = "/dev/shm/opendj.properties"
   $base_dn_file     = "${tmp}/base_dn.ldif"
-  pkgs              = keys($packages)
+  $pkgs              = keys($packages)
 
   validate_hash($packages)
   define force_package($package=$title, $ensure=$ensure) {
