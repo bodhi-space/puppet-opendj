@@ -27,7 +27,7 @@ class opendj (
   $tmp              = hiera('opendj::tmpdir', '/tmp'),
   $master           = hiera('opendj::master', undef),
   $java_properties  = hiera('opendj::java_properties', undef),
-  $packages         = hiera('opendj::packages', { 'opendj': 'present' })
+  $packages         = hiera('opendj::packages', { 'opendj' => 'present' })
   $config_options   = hiera('opendj::config_options', [])
   $advanced_config_options = hiera('opendj::advanced_config_options', [])
 ) {
