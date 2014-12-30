@@ -30,6 +30,7 @@ class opendj (
   $packages         = hiera('opendj::packages', { 'opendj' => 'present' }),
   $config_options   = hiera('opendj::config_options', []),
 ) {
+
   $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
   $ldapsearch       = "${opendj::home}/bin/ldapsearch ${common_opts} -p ${opendj::ldap_port}"
   $ldapmodify       = "${opendj::home}/bin/ldapmodify ${common_opts} -p ${opendj::ldap_port}"
@@ -38,10 +39,7 @@ class opendj (
 # props_file Contains passwords, thus (temporarily) stored in /dev/shm
   $props_file       = "/dev/shm/opendj.properties"
   $base_dn_file     = "${tmp}/base_dn.ldif"
-
-  group { "${group}":
-    ensure          => "present",
-  }
+  pkgs              = keys($packages)
 
   validate_hash($packages)
   define force_package($package=$title, $ensure=$ensure) {
@@ -52,8 +50,11 @@ class opendj (
     }
   }
 
-  pkgs              = keys($packages)
   create_resources(force_package, $packages)
+
+  group { "${group}":
+    ensure          => "present",
+  }
 
   user { "${user}":
     ensure          => "present",
@@ -133,12 +134,12 @@ class opendj (
     # UGLY pseudo-hash looping hack - if ONLY puppet would've implemented - oh, say - a f*cking FOREACH construct by f*cking version 3.4...!!!
     $opt            = split($configopt, ':')
     $o              = $opt[0]
-    $v              = $opt{1]
+    $v              = $opt[1]
     if size($opt) == 3 {
       $a            = $opt[2]
     } else {
       $a            = ''
-    {
+    }
     exec { "set_${o}_to_${v}":
       require       => Service['opendj'],
       command       => "/bin/su ${user} -c '${dsconfig} ${a} set-global-configuration-prop --set ${o}:${v}}'",
