@@ -52,7 +52,8 @@ class opendj (
     }
   }
 
-  create_resources(force_package, $packages) ->
+  pkgs              = keys($packages)
+  create_resources(force_package, $packages)
 
   user { "${user}":
     ensure          => "present",
@@ -61,6 +62,7 @@ class opendj (
     home            => "${opendj::home}",
     shell           => '/sbin/nologin',
     managehome      => true,
+    require         => Package[ $pkgs ],
   } ->
 
   file { "${home}":
