@@ -12,8 +12,8 @@
 #
 
 class opendj (
-  $ldap_port        = hiera('opendj::ldap_port', '1389'),
-  $ldaps_port       = hiera('opendj::ldaps_port', '1636'),
+  $ldap_port        = hiera('opendj::ldap_port', '389'),
+  $ldaps_port       = hiera('opendj::ldaps_port', '636'),
   $admin_port       = hiera('opendj::admin_port', '4444'),
   $repl_port        = hiera('opendj::repl_port', '8989'),
   $jmx_port         = hiera('opendj::jmx_port', '1689'),
@@ -27,49 +27,48 @@ class opendj (
   $tmp              = hiera('opendj::tmpdir', '/tmp'),
   $master           = hiera('opendj::master', undef),
   $java_properties  = hiera('opendj::java_properties', undef),
+  $packages         = hiera('opendj::packages', { 'opendj': 'present' })
+  $config_options   = hiera('opendj::config_options', [])
+  $advanced_config_options = hiera('opendj::advanced_config_options', [])
 ) {
   $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
   $ldapsearch       = "${opendj::home}/bin/ldapsearch ${common_opts} -p ${opendj::ldap_port}"
   $ldapmodify       = "${opendj::home}/bin/ldapmodify ${common_opts} -p ${opendj::ldap_port}"
-  $dsconfig         = "${opendj::home}/bin/dsconfig   ${common_opts} -p ${opendj::admin_port} -X -n"
+  $dsconfig         = "${opendj::home}/bin/dsconfig ${common_opts} -p ${opendj::admin_port} -X -n"
   $dsreplication    = "${opendj::home}/bin/dsreplication --adminUID admin --adminPassword ${admin_password} -X -n"
 # props_file Contains passwords, thus (temporarily) stored in /dev/shm
   $props_file       = "/dev/shm/opendj.properties"
   $base_dn_file     = "${tmp}/base_dn.ldif"
 
-  package { "opendj":
-    ensure          => present,
-  }
-
   group { "${group}":
     ensure          => "present",
   }
 
+  validate_hash($packages)
+  define force_package($package=$title, $ensure=$ensure) {
+    validate_string ($package)
+    validate_string ($ensure)
+    package { "$package":
+      ensure        => "$ensure",
+    }
+  }
+
+  create_resources(force_package, $packages) ->
+
   user { "${user}":
     ensure          => "present",
-    groups          => $group,
+    gid             => $group,
     comment         => 'OpenDJ LDAP daemon',
     home            => "${opendj::home}",
     shell           => '/sbin/nologin',
     managehome      => true,
-    require         => Group["${group}"],
-  }
+  } ->
 
   file { "${home}":
     ensure          => directory,
     owner           => $user,
     group           => $group,
-    require         => [User["${user}"], Package["opendj"]],
-  }
-
-  file { "${props_file}":
-    ensure          => file,
-    content         => template("${module_name}/setup.erb"),
-    owner           => $user,
-    group           => $group,
-    mode            => 0600,
-    require         => [File["${home}"], File["${base_dn_file}"]],
-  }
+  } ->
 
   file { "${base_dn_file}":
     ensure          => file,
@@ -77,37 +76,27 @@ class opendj (
     owner           => $user,
     group           => $group,
     mode            => 0600,
-    require         => User["${user}"],
-  }
+  } ->
 
-  file_line { 'file_limits_soft':
-    path            => '/etc/security/limits.conf',
-    line            => '${user} soft nofile 65536',
-    require         => User["${user}"],
-  }
-
-  file_line { 'file_limits_hard':
-    path            => '/etc/security/limits.conf',
-    line            => '${user} hard nofile 131072',
-    require         => User["${user}"],
-  }
+  file { "${props_file}":
+    ensure          => file,
+    content         => template("${module_name}/setup.erb"),
+    owner           => $user,
+    group           => $group,
+    mode            => 0600,
+  } ~>
 
   exec { "configure opendj":
-    require         => File["${props_file}"],
     command         => "/bin/su opendj -s /bin/bash -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
     creates         => "${home}/config",
-    notify          => Exec['create RC script'],
-  }
+  } ~>
 
   exec { "create RC script":
-    require         => Package["opendj"],
     command         => "${home}/bin/create-rc-script --userName ${user} --outputFile /etc/init.d/opendj",
     creates         => "/etc/init.d/opendj",
-    notify          => Service['opendj'],
-  }
+  } ~>
 
   service { 'opendj':
-    require         => Exec["create RC script"],
     enable          => true,
     ensure          => running,
     hasrestart      => true,
@@ -115,25 +104,60 @@ class opendj (
     status          => "${home}/bin/status -D \"${admin_user}\" --bindPassword ${admin_password} | grep --quiet Started",
   }
 
-## Bug in OpenAM 11. Heartbeats happens as anonymous binds. Comment this back in when Forgerock applies the bugfix.
-## https://bugster.forgerock.org/jira/browse/OPENAM-3498
-#  exec { "reject unauthenticated requests":
-#    require         => Service['opendj'],
-#    command         => "/bin/su ${user} -s /bin/bash -c \" $dsconfig set-global-configuration-prop --set reject-unauthenticated-requests:true\"",
-#    unless          => "/bin/su ${user} -s /bin/bash -c \" $dsconfig get-global-configuration-prop | grep 'reject-unauthenticated-requests' | grep true\"",
-#  }
+  file_line { 'file_limits_soft':
+    path            => '/etc/security/limits.conf',
+    line            => '${user} soft nofile 65536',
+    require         => User["${user}"],
+    notify          => Service['opendj'],
+  }
 
+  file_line { 'file_limits_hard':
+    path            => '/etc/security/limits.conf',
+    line            => '${user} hard nofile 131072',
+    require         => User["${user}"],
+    notify          => Service['opendj'],
+  }
+
+### FIXME - rework to only create baseDN when first initiallizing the DIT
 #  exec { "create base dn":
 #    require         => File["${base_dn_file}"],
 #    command         => "/bin/su ${user} -s /bin/bash -c \"${ldapmodify} -a -f '${base_dn_file}'\"",
 #    refreshonly     => true,
 #  }
 
-  exec { "set single structural objectclass behavior":
-    command         => "${dsconfig} --advanced set-global-configuration-prop --set single-structural-objectclass-behavior:accept",
-    unless          => "${dsconfig} --advanced get-global-configuration-prop | grep 'single-structural-objectclass-behavior' | grep accept",
-    require         => Service['opendj'],
+  # $configopt should be of the form 'config-option:value[:--advanced]' where '[:--advanced]' is optional and
+  # can actually be ANY valid dsconfig option(s), not just '--advanced'.
+  define set_config_option ($configopt) {
+    validate_string($configopt)
+    # UGLY pseudo-hash looping hack - if ONLY puppet would've implemented - oh, say - a f*cking FOREACH construct by f*cking version 3.4...!!!
+    $opt            = split($configopt, ':')
+    $o              = $opt[0]
+    $v              = $opt{1]
+    if size($opt) == 3 {
+      $a            = $opt[2]
+    } else {
+      $a            = ''
+    {
+    exec { "set_${o}_to_${v}":
+      require       => Service['opendj'],
+      command       => "/bin/su ${user} -c '${dsconfig} ${a} set-global-configuration-prop --set ${o}:${v}}'",
+      unless        => "/bin/su ${user} -c '${dsconfig} ${a} -s get-global-configuration-prop --property ${o} | fgrep -i ${v}'",
+    }
   }
+
+  set_config_option ( $config_options )
+
+#  exec { 'reject unauthenticated requests':
+#    require       => Service['opendj'],
+#    command       => "/bin/su ${user} -c '$dsconfig set-global-configuration-prop --set reject-unauthenticated-requests:true'",
+#    unless        => "/bin/su ${user} -c '$dsconfig get-global-configuration-prop | grep reject-unauthenticated-requests | grep true'",
+#  }
+
+#  exec { "set single structural objectclass behavior":
+#    command         => "${dsconfig} --advanced set-global-configuration-prop --set single-structural-objectclass-behavior:accept",
+#    unless          => "${dsconfig} --advanced get-global-configuration-prop | grep 'single-structural-objectclass-behavior' | grep accept",
+#    require         => Service['opendj'],
+#  }
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
