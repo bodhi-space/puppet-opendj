@@ -27,9 +27,8 @@ class opendj (
   $tmp              = hiera('opendj::tmpdir', '/tmp'),
   $master           = hiera('opendj::master', undef),
   $java_properties  = hiera('opendj::java_properties', undef),
-  $packages         = hiera('opendj::packages', { 'opendj' => 'present' })
-  $config_options   = hiera('opendj::config_options', [])
-  $advanced_config_options = hiera('opendj::advanced_config_options', [])
+  $packages         = hiera('opendj::packages', { 'opendj' => 'present' }),
+  $config_options   = hiera('opendj::config_options', []),
 ) {
   $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
   $ldapsearch       = "${opendj::home}/bin/ldapsearch ${common_opts} -p ${opendj::ldap_port}"
