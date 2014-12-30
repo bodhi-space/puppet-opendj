@@ -129,7 +129,7 @@ class opendj (
 
   # $configopt should be of the form 'config-option:value[:--advanced]' where '[:--advanced]' is optional and
   # can actually be ANY valid dsconfig option(s), not just '--advanced'.
-  define set_config_option ($configopt) {
+  define set_config_option ($configopt=$title) {
     validate_string($configopt)
     # UGLY pseudo-hash looping hack - if ONLY puppet would've implemented - oh, say - a f*cking FOREACH construct by f*cking version 3.4...!!!
     $opt            = split($configopt, ':')
@@ -147,7 +147,7 @@ class opendj (
     }
   }
 
-  set_config_option ( $config_options )
+  set_config_option { $config_options }
 
 #  exec { 'reject unauthenticated requests':
 #    require       => Service['opendj'],
