@@ -28,7 +28,8 @@ class opendj (
   $master           = hiera('opendj::master', undef),
   $java_properties  = hiera('opendj::java_properties', undef),
   $packages         = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, }),
-  $config_options   = hiera('opendj::config_options', ['reject-unauthenticated-requests:true']),
+  $config_options   = hiera('opendj::config_options', {}),
+#  $config_options   = hiera('opendj::config_options', { 'reject-unauthenticated-requests' => { 'value' => ':true', }, }),
 ) {
 
   $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
@@ -127,27 +128,18 @@ class opendj (
 #    refreshonly     => true,
 #  }
 
-  # $configopt should be of the form 'config-option:value[:--advanced]' where '[:--advanced]' is optional and
-  # can actually be ANY valid dsconfig option(s), not just '--advanced'.
-  define set_config_option ($configopt=$title) {
+  define set_config_option ($configopt=$title, $value=$value, $extra_opts='') {
     validate_string($configopt)
-    # UGLY pseudo-hash looping hack - if ONLY puppet would've implemented - oh, say - a f*cking FOREACH construct by f*cking version 3.4...!!!
-    $opt            = split($configopt, ':')
-    $o              = $opt[0]
-    $v              = $opt[1]
-    if size($opt) == 3 {
-      $extra_opts   = $opt[2]
-    } else {
-      $extra_opts   = ''
-    }
-    exec { "set_${o}_to_${v}":
+    validate_string($value)
+    validate_string($extra_opts)
+    exec { "set_${configopt}_to_${value}":
       require       => Service['opendj'],
-      command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${o}:${v}}'",
-      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${o} | fgrep -i ${v}'",
+      command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}}'",
+      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep -i ${value}'",
     }
   }
 
-  set_config_option { $config_options }
+  create_resources (set_config_options, $config_options)
 
 #  exec { 'reject unauthenticated requests':
 #    require       => Service['opendj'],
