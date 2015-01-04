@@ -28,7 +28,7 @@ class opendj (
   $master           = hiera('opendj::master', undef),
   $java_properties  = hiera('opendj::java_properties', undef),
   $packages         = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, }),
-  $config_options   = hiera('opendj::config_options', []),
+  $config_options   = hiera('opendj::config_options', ['reject-unauthenticated-requests:true']),
 ) {
 
   $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
@@ -136,14 +136,14 @@ class opendj (
     $o              = $opt[0]
     $v              = $opt[1]
     if size($opt) == 3 {
-      $a            = $opt[2]
+      $extra_opts   = $opt[2]
     } else {
-      $a            = ''
+      $extra_opts   = ''
     }
     exec { "set_${o}_to_${v}":
       require       => Service['opendj'],
-      command       => "/bin/su ${user} -c '${dsconfig} ${a} set-global-configuration-prop --set ${o}:${v}}'",
-      unless        => "/bin/su ${user} -c '${dsconfig} ${a} -s get-global-configuration-prop --property ${o} | fgrep -i ${v}'",
+      command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${o}:${v}}'",
+      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${o} | fgrep -i ${v}'",
     }
   }
 
