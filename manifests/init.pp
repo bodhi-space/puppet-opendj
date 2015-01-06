@@ -23,6 +23,7 @@ class opendj (
   $home             = hiera('opendj::home', '/opt/opendj'),
   $user             = hiera('opendj::user', 'opendj'),
   $group            = hiera('opendj::group', 'opendj'),
+  $manage_user      = hiera('opendj::manage_user', true),
   $host             = hiera('opendj::host', $fqdn),
   $tmp              = hiera('opendj::tmpdir', '/tmp'),
   $master           = hiera('opendj::master', undef),
@@ -56,7 +57,7 @@ class opendj (
     ensure          => "present",
   }
 
-  if ($user != 'root') {
+  if $manage_user {
     user { "${user}":
       ensure        => "present",
       gid           => $group,
@@ -65,7 +66,8 @@ class opendj (
       shell         => '/sbin/nologin',
       managehome    => true,
       require       => Package[ $pkgs ],
-    } ->
+      before        => File[ "${home}" ],
+    }
   }
 
   file { "${home}":
