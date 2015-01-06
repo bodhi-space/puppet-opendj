@@ -32,7 +32,7 @@ class opendj (
   $config_options   = hiera('opendj::config_options', {}),
 ) {
 
-  $common_opts      = "-h localhost -D \"${admin_user}\" -w \"${admin_password}\""
+  $common_opts      = "-h localhost -D '${admin_user}' -w '${admin_password}'"
   $ldapsearch       = "${home}/bin/ldapsearch ${common_opts} -p ${ldap_port}"
   $ldapmodify       = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
   $dsconfig         = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
@@ -43,113 +43,112 @@ class opendj (
   $pkgs             = keys($packages)
 
   validate_hash($packages)
-  define force_package($package=$title, $ensure=$ensure) {
-    validate_string ($package)
-    validate_string ($ensure)
-    package { "$package":
-      ensure        => "$ensure",
+    define force_package($package=$title, $ensure=$ensure) {
+      validate_string ($package)
+      validate_string ($ensure)
+      package { "$package":
+        ensure        => "$ensure",
+      }
     }
-  }
 
-  create_resources(force_package, $packages)
+    create_resources(force_package, $packages)
 
-  group { "${group}":
-    ensure          => "present",
-  }
-
-  if $manage_user {
-    user { "${user}":
-      ensure        => "present",
-      gid           => $group,
-      comment       => 'OpenDJ LDAP daemon user',
-      home          => "${home}",
-      shell         => '/sbin/nologin',
-      managehome    => true,
-      require       => Package[ $pkgs ],
-      before        => File[ "${home}" ],
+    group { "${group}":
+      ensure          => "present",
     }
-  }
 
-  file { "${home}":
-    ensure          => directory,
-    owner           => $user,
-    group           => $group,
-    require         => Package[ $pkgs ],
-  } ->
-
-  file { "${base_dn_file}":
-    ensure          => file,
-    content         => template("${module_name}/base_dn.ldif.erb"),
-    owner           => $user,
-    group           => $group,
-    mode            => 0600,
-  } ->
-
-  file { "${props_file}":
-    ensure          => file,
-    content         => template("${module_name}/setup.erb"),
-    owner           => $user,
-    group           => $group,
-    mode            => 0600,
-  } ~>
-
-  exec { "configure opendj":
-    command         => "/bin/su ${user} -s /bin/sh -c \"${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}\"",
-    creates         => "${home}/config",
-  } ~>
-
-  exec { "create RC script":
-    command         => "${home}/bin/create-rc-script --userName ${user} --outputFile /etc/init.d/opendj",
-    creates         => "/etc/init.d/opendj",
-  } ~>
-
-  service { 'opendj':
-    enable          => true,
-    ensure          => running,
-    hasrestart      => true,
-    hasstatus       => false,
-    status          => "${home}/bin/status -D \"${admin_user}\" --bindPassword \"${admin_password}\" | fgrep -qw Started",
-  }
-
-  if $manage_user {
-    file_line { 'file_limits_soft':
-      path          => '/etc/security/limits.conf',
-      line          => "${user} soft nofile 65536",
-      require       => User["${user}"],
-      notify        => Service['opendj'],
+    if $manage_user {
+      user { "${user}":
+        ensure        => "present",
+        gid           => $group,
+        comment       => 'OpenDJ LDAP daemon user',
+        home          => "${home}",
+        shell         => '/sbin/nologin',
+        managehome    => true,
+        require       => Package[ $pkgs ],
+        before        => File[ "${home}" ],
+      }
     }
-    file_line { 'file_limits_hard':
-      path          => '/etc/security/limits.conf',
-      line          => "${user} hard nofile 131072",
-      require       => User["${user}"],
-      notify        => Service['opendj'],
+
+    file { "${home}":
+      ensure          => directory,
+      owner           => $user,
+      group           => $group,
+      require         => Package[ $pkgs ],
+    } ->
+
+    file { "${base_dn_file}":
+      ensure          => file,
+      content         => template("${module_name}/base_dn.ldif.erb"),
+      owner           => $user,
+      group           => $group,
+      mode            => 0600,
+    } ->
+
+    file { "${props_file}":
+      ensure          => file,
+      content         => template("${module_name}/setup.erb"),
+      owner           => $user,
+      group           => $group,
+      mode            => 0600,
+    } ~>
+
+    exec { "configure opendj":
+      command         => "/bin/su ${user} -s /bin/sh -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
+      creates         => "${home}/config",
+    } ~>
+
+    exec { "create RC script":
+      command         => "${home}/bin/create-rc-script --userName ${user} --outputFile /etc/init.d/opendj",
+      creates         => "/etc/init.d/opendj",
+    } ~>
+
+    service { 'opendj':
+      enable          => true,
+      ensure          => running,
+      hasrestart      => true,
+      hasstatus       => false,
+      status          => "${home}/bin/status -D '${admin_user}' --bindPassword '${admin_password}' | fgrep -qw Started",
     }
+
+    if $manage_user {
+      file_line { 'file_limits_soft':
+        path          => '/etc/security/limits.conf',
+        line          => "${user} soft nofile 65536",
+        require       => User["${user}"],
+        notify        => Service['opendj'],
+      }
+      file_line { 'file_limits_hard':
+        path          => '/etc/security/limits.conf',
+        line          => "${user} hard nofile 131072",
+        require       => User["${user}"],
+        notify        => Service['opendj'],
+      }
   }
 
-### FIXME - rework to only create baseDN when first initiallizing the DIT
-#  exec { "create base dn":
-#    require         => File["${base_dn_file}"],
-#    command         => "/bin/su ${user} -s /bin/sh -c \"${ldapmodify} -a -f '${base_dn_file}'\"",
-#    refreshonly     => true,
-#  }
-
-  define config_option ($configopt=$title, $value=$value, $extra_opts='') {
+  define config_option ($configopt=$title, $value=$value, $extra_opts='', $dsconfig, $user) {
     validate_string($configopt)
     validate_string($value)
     validate_string($extra_opts)
     exec { "set_${configopt}_to_${value}":
       require       => Service['opendj'],
-      command       => "/bin/su ${user} -c \"${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}\"",
-      unless        => "/bin/su ${user} -c \"${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep ${value}\"",
+      command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}'",
+      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep ${value}'",
     }
+  }
+
+  # default values - crappy way of passing in global variables since define()s can't see surrounding scope :-/
+  Config_option {
+    $dsconfig       => $dsconfig,
+    $user           => $user,
   }
 
   create_resources (config_option, $config_options)
 
 #  exec { 'reject unauthenticated requests':
 #    require       => Service['opendj'],
-#    command       => "/bin/su ${user} -c \"$dsconfig set-global-configuration-prop --set reject-unauthenticated-requests:true\"",
-#    unless        => "/bin/su ${user} -c \"$dsconfig get-global-configuration-prop | fgrep reject-unauthenticated-requests | fgrep true\"",
+#    command       => "/bin/su ${user} -c '$dsconfig set-global-configuration-prop --set reject-unauthenticated-requests:true'",
+#    unless        => "/bin/su ${user} -c '$dsconfig get-global-configuration-prop | fgrep reject-unauthenticated-requests | fgrep true'",
 #  }
 
 #  exec { "set single structural objectclass behavior":
@@ -164,7 +163,7 @@ class opendj (
       command       => "/bin/su ${user} -s /bin/sh -c \"$dsreplication enable --host1 ${master} --port1 ${admin_port} \
         --replicationPort1 ${repl_port} --bindDN1 '${admin_user}' --bindPassword1 ${admin_password} --host2 ${host} --port2 ${admin_port} \
         --replicationPort2 ${repl_port} --bindDN2 '${admin_user}' --bindPassword2 ${admin_password} --baseDN '${base_dn}'\"",
-      unless        => "/bin/su ${user} -s /bin/sh -c \"$dsreplication status | fgrep ${host} | cut -d : -f 5 | fgrep true\"",
+      unless        => "/bin/su ${user} -s /bin/sh -c '$dsreplication status | fgrep ${host} | cut -d : -f 5 | fgrep true'",
       notify        => Exec["initialize replication"]
     }
 
@@ -180,7 +179,7 @@ class opendj (
     create_resources('opendj::java_property', $java_properties)
 
     exec { "apply java properties":
-      command       => "/bin/su ${user} -s /bin/sh -c \"${home}/bin/dsjavaproperties\"",
+      command       => "/bin/su ${user} -s /bin/sh -c '${home}/bin/dsjavaproperties'",
       notify        => Service['opendj'],
     }
   }
