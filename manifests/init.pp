@@ -56,20 +56,23 @@ class opendj (
     ensure          => "present",
   }
 
-  user { "${user}":
-    ensure          => "present",
-    gid             => $group,
-    comment         => 'OpenDJ LDAP daemon',
-    home            => "${opendj::home}",
-    shell           => '/sbin/nologin',
-    managehome      => true,
-    require         => Package[ $pkgs ],
-  } ->
+  if ($user != 'root') {
+    user { "${user}":
+      ensure        => "present",
+      gid           => $group,
+      comment       => 'OpenDJ LDAP daemon user',
+      home          => "${home}",
+      shell         => '/sbin/nologin',
+      managehome    => true,
+      require       => Package[ $pkgs ],
+    } ->
+  }
 
   file { "${home}":
     ensure          => directory,
     owner           => $user,
     group           => $group,
+    require         => Package[ $pkgs ],
   } ->
 
   file { "${base_dn_file}":
