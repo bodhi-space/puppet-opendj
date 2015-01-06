@@ -126,6 +126,12 @@ class opendj (
       }
   }
 
+  # default values - crappy way of passing in global variables since define()s can't see surrounding scope :-/
+  Opendj::Config_option {
+    dsconfig        => $dsconfig,
+    user            => $user,
+  }
+
   define config_option ($configopt=$title, $value=$value, $extra_opts='', $dsconfig, $user) {
     validate_string($configopt)
     validate_string($value)
@@ -135,12 +141,6 @@ class opendj (
       command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}'",
       unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep ${value}'",
     }
-  }
-
-  # default values - crappy way of passing in global variables since define()s can't see surrounding scope :-/
-  Config_option {
-    dsconfig        => $dsconfig,
-    user            => $user,
   }
 
   create_resources (config_option, $config_options)
