@@ -144,7 +144,7 @@ class opendj (
     }
   }
 
-  create_resources (config_options, $config_options)
+  create_resources (config_option, $config_options)
 
 #  exec { 'reject unauthenticated requests':
 #    require       => Service['opendj'],
