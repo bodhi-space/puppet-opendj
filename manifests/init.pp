@@ -32,15 +32,15 @@ class opendj (
   $config_options   = hiera('opendj::config_options', {}),
 ) {
 
-  $common_opts      = "-h localhost -D '${opendj::admin_user}' -w ${opendj::admin_password}"
-  $ldapsearch       = "${opendj::home}/bin/ldapsearch ${common_opts} -p ${opendj::ldap_port}"
-  $ldapmodify       = "${opendj::home}/bin/ldapmodify ${common_opts} -p ${opendj::ldap_port}"
-  $dsconfig         = "${opendj::home}/bin/dsconfig ${common_opts} -p ${opendj::admin_port} -X -n"
-  $dsreplication    = "${opendj::home}/bin/dsreplication --adminUID admin --adminPassword ${admin_password} -X -n"
+  $common_opts      = "-h localhost -D '${admin_user}' -w ${admin_password}"
+  $ldapsearch       = "${home}/bin/ldapsearch ${common_opts} -p ${ldap_port}"
+  $ldapmodify       = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
+  $dsconfig         = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
+  $dsreplication    = "${home}/bin/dsreplication --adminUID admin --adminPassword ${admin_password} -X -n"
 # props_file Contains passwords, thus (temporarily) stored in /dev/shm
   $props_file       = "/dev/shm/opendj.properties"
   $base_dn_file     = "${tmp}/base_dn.ldif"
-  $pkgs              = keys($packages)
+  $pkgs             = keys($packages)
 
   validate_hash($packages)
   define force_package($package=$title, $ensure=$ensure) {
@@ -94,7 +94,7 @@ class opendj (
   } ~>
 
   exec { "configure opendj":
-    command         => "/bin/su ${user} -s /bin/bash -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
+    command         => "/bin/su ${user} -s /bin/sh -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
     creates         => "${home}/config",
   } ~>
 
@@ -108,19 +108,19 @@ class opendj (
     ensure          => running,
     hasrestart      => true,
     hasstatus       => false,
-    status          => "${home}/bin/status -D \"${admin_user}\" --bindPassword ${admin_password} | grep --quiet Started",
+    status          => "${home}/bin/status -D '${admin_user}' --bindPassword '${admin_password}' | fgrep -qw Started",
   }
 
   if $manage_user {
     file_line { 'file_limits_soft':
       path          => '/etc/security/limits.conf',
-      line          => '${user} soft nofile 65536',
+      line          => "${user} soft nofile 65536",
       require       => User["${user}"],
       notify        => Service['opendj'],
     }
     file_line { 'file_limits_hard':
       path          => '/etc/security/limits.conf',
-      line          => '${user} hard nofile 131072',
+      line          => "${user} hard nofile 131072",
       require       => User["${user}"],
       notify        => Service['opendj'],
     }
@@ -129,7 +129,7 @@ class opendj (
 ### FIXME - rework to only create baseDN when first initiallizing the DIT
 #  exec { "create base dn":
 #    require         => File["${base_dn_file}"],
-#    command         => "/bin/su ${user} -s /bin/bash -c \"${ldapmodify} -a -f '${base_dn_file}'\"",
+#    command         => "/bin/su ${user} -s /bin/sh -c \"${ldapmodify} -a -f '${base_dn_file}'\"",
 #    refreshonly     => true,
 #  }
 
@@ -140,7 +140,7 @@ class opendj (
     exec { "set_${configopt}_to_${value}":
       require       => Service['opendj'],
       command       => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}'",
-      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep -i ${value}'",
+      unless        => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep ${value}'",
     }
   }
 
@@ -149,27 +149,27 @@ class opendj (
 #  exec { 'reject unauthenticated requests':
 #    require       => Service['opendj'],
 #    command       => "/bin/su ${user} -c '$dsconfig set-global-configuration-prop --set reject-unauthenticated-requests:true'",
-#    unless        => "/bin/su ${user} -c '$dsconfig get-global-configuration-prop | grep reject-unauthenticated-requests | grep true'",
+#    unless        => "/bin/su ${user} -c '$dsconfig get-global-configuration-prop | fgrep reject-unauthenticated-requests | fgrep true'",
 #  }
 
 #  exec { "set single structural objectclass behavior":
 #    command         => "${dsconfig} --advanced set-global-configuration-prop --set single-structural-objectclass-behavior:accept",
-#    unless          => "${dsconfig} --advanced get-global-configuration-prop | grep 'single-structural-objectclass-behavior' | grep accept",
+#    unless          => "${dsconfig} --advanced get-global-configuration-prop | fgrep 'single-structural-objectclass-behavior' | fgrep accept",
 #    require         => Service['opendj'],
 #  }
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
       require       => Service['opendj'],
-      command       => "/bin/su ${user} -s /bin/bash -c \"$dsreplication enable --host1 ${master} --port1 ${admin_port} \
+      command       => "/bin/su ${user} -s /bin/sh -c \"$dsreplication enable --host1 ${master} --port1 ${admin_port} \
         --replicationPort1 ${repl_port} --bindDN1 '${admin_user}' --bindPassword1 ${admin_password} --host2 ${host} --port2 ${admin_port} \
         --replicationPort2 ${repl_port} --bindDN2 '${admin_user}' --bindPassword2 ${admin_password} --baseDN '${base_dn}'\"",
-      unless        => "/bin/su ${user} -s /bin/bash -c \"$dsreplication status | grep ${host} | cut -d : -f 5 | grep true\"",
+      unless        => "/bin/su ${user} -s /bin/sh -c '$dsreplication status | fgrep ${host} | cut -d : -f 5 | fgrep true'",
       notify        => Exec["initialize replication"]
     }
 
     exec { "initialize replication":
-      command       => "/bin/su ${user} -s /bin/bash -c \"$dsreplication initialize -h ${master} -p ${admin_port} -O ${host} --baseDN '${base_dn}'\"",
+      command       => "/bin/su ${user} -s /bin/sh -c \"$dsreplication initialize -h ${master} -p ${admin_port} -O ${host} --baseDN '${base_dn}'\"",
       require       => Exec["enable replication"],
       refreshonly   => true,
     }
@@ -180,7 +180,7 @@ class opendj (
     create_resources('opendj::java_property', $java_properties)
 
     exec { "apply java properties":
-      command       => "/bin/su ${user} -s /bin/bash -c \"${home}/bin/dsjavaproperties\"",
+      command       => "/bin/su ${user} -s /bin/sh -c '${home}/bin/dsjavaproperties'",
       notify        => Service['opendj'],
     }
   }
