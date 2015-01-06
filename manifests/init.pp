@@ -32,7 +32,7 @@ class opendj (
   $config_options   = hiera('opendj::config_options', {}),
 ) {
 
-  $common_opts      = "-h localhost -D '${admin_user}' -w '${admin_password}'"
+  $common_opts      = "-h localhost -D \"${admin_user}\" -w \"${admin_password}\""
   $ldapsearch       = "${home}/bin/ldapsearch ${common_opts} -p ${ldap_port}"
   $ldapmodify       = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
   $dsconfig         = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
