@@ -139,8 +139,8 @@ class opendj (
 
   # default values - crappy way of passing in global variables since define()s can't see surrounding scope :-/
   Config_option {
-    $dsconfig       => $dsconfig,
-    $user           => $user,
+    dsconfig        => $dsconfig,
+    user            => $user,
   }
 
   create_resources (config_option, $config_options)
