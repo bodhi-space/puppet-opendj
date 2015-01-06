@@ -111,18 +111,19 @@ class opendj (
     status          => "${home}/bin/status -D \"${admin_user}\" --bindPassword ${admin_password} | grep --quiet Started",
   }
 
-  file_line { 'file_limits_soft':
-    path            => '/etc/security/limits.conf',
-    line            => '${user} soft nofile 65536',
-    require         => User["${user}"],
-    notify          => Service['opendj'],
-  }
-
-  file_line { 'file_limits_hard':
-    path            => '/etc/security/limits.conf',
-    line            => '${user} hard nofile 131072',
-    require         => User["${user}"],
-    notify          => Service['opendj'],
+  if $manage_user {
+    file_line { 'file_limits_soft':
+      path          => '/etc/security/limits.conf',
+      line          => '${user} soft nofile 65536',
+      require       => User["${user}"],
+      notify        => Service['opendj'],
+    }
+    file_line { 'file_limits_hard':
+      path          => '/etc/security/limits.conf',
+      line          => '${user} hard nofile 131072',
+      require       => User["${user}"],
+      notify        => Service['opendj'],
+    }
   }
 
 ### FIXME - rework to only create baseDN when first initiallizing the DIT
