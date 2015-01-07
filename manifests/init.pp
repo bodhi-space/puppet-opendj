@@ -44,7 +44,7 @@ class opendj (
     $passwd_data      = "-j \"${admin_pass_file}\""
   }
   $common_opts        = "-h localhost -D \"${admin_user}\" ${passwd_data}"
-  $status             = "${home}/bin/status -D \"${admin_user}\" ${passwd_data}",
+  $status             = "${home}/bin/status -D \"${admin_user}\" ${passwd_data}"
   $ldapsearch         = "${home}/bin/ldapsearch ${common_opts} -p ${ldap_port}"
   $ldapmodify         = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
   $dsconfig           = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
