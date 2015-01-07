@@ -1,11 +1,31 @@
+cli                             =true
+no-prompt                       =true
+quiet                           =true
+doNotStart                      =true
+acceptLicense                   =true
 hostname                        =<%= @host %>
 ldapPort                        =<%= @ldap_port %>
-generateSelfSignedCertificate   =true
+<% if enable_tls %>
 enableStartTLS                  =true
+  <% if pkcs12_keystore == nil %>
+generateSelfSignedCertificate   =true
+  <% else %>
+generateSelfSignedCertificate   =false
+usePkcs12keyStore               =<%= @pkcs12_keystore %>
+keyStorePassword                =<%= @keystore_pass %>
+  <% end %>
+<% else %>
+enableStartTLS                  =false
+<% end %>
 ldapsPort                       =<%= @ldaps_port %>
 jmxPort                         =<%= @jmx_port %>
 adminConnectorPort              =<%= @admin_port %>
 rootUserDN                      =<%= @admin_user %>
 rootUserPassword                =<%= @admin_password %>
 baseDN                          =<%= @base_dn %>
-ldifFile                        =<%= @base_dn_file %>
+<% if ldiffile == nil %>
+addBaseEntry                    =true
+<% else %>
+addBaseEntry                    =false
+ldifFile                        =<%= @ldiffile %>
+<% end %>
