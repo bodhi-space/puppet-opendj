@@ -181,14 +181,15 @@ class opendj (
     user              => $user,
   }
 
-  define config_option ($configopt=$title, $value=$value, $extra_opts='', $dsconfig, $user) {
+  define config_option ($configopt=$title, $configclass='global-configuration', $value=$value, $extra_opts='', $dsconfig, $user) {
     validate_string($configopt)
+    validate_string($configclass)
     validate_string($value)
     validate_string($extra_opts)
-    exec { "set_${configopt}_to_${value}":
+    exec { "set_${configclass}_${configopt}_to_${value}":
       require         => Service['opendj'],
-      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-global-configuration-prop --set ${configopt}:${value}'",
-      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-global-configuration-prop --property ${configopt} | fgrep ${value}'",
+      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop --set ${configopt}:${value}'",
+      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop --property ${configopt} | fgrep ${value}'",
     }
   }
 
