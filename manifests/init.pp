@@ -35,6 +35,7 @@ class opendj (
   $keystore_pass_file = hiera('opendj::keystore_pass_file', ''),
   $config_options     = hiera('opendj::config_options', {}),
   $ldiffile           = hiera('opendj::ldiffile', ''),
+  $custom_schemas     = hiera('opendj::schemas', {}),
   $master             = hiera('opendj::master', undef),
   $java_properties    = hiera('opendj::java_properties', undef),
 ) {
@@ -143,7 +144,6 @@ class opendj (
 
   exec { "configure opendj":
     command           => "/bin/su ${user} -s /bin/sh -c '${home}/setup --acceptLicense --propertiesFilePath ${props_file}'",
-#    command           => "/bin/su ${user} -s /bin/sh -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
     creates           => "${home}/config",
   } ~>
 
@@ -175,12 +175,13 @@ class opendj (
     }
   }
 
-  # default values - crappy way of passing in global variables since define()s can't see surrounding scope :-/
+  # default values - hacky way of passing in global variables since define()s can't see surrounding scope :-/
   Opendj::Config_option {
     dsconfig          => $dsconfig,
     user              => $user,
   }
 
+  # 'extra_opts' can be any valid dsconfig option(s) - the most common use is to pass in '--advanced' for those opts which require it...
   define config_option ($myopt=$title, $configopt='', $configclass='global-configuration', $policy='', $value=$value, $extra_opts='', $dsconfig, $user) {
     validate_string($title)
     # By default the config option name will be directly in $title, but since hashes can't have duplicate keys, and
@@ -210,11 +211,16 @@ class opendj (
 
   create_resources (config_option, $config_options)
 
-#  exec { "set single structural objectclass behavior":
-#    command           => "${dsconfig} --advanced set-global-configuration-prop --set single-structural-objectclass-behavior:accept",
-#    unless            => "${dsconfig} --advanced get-global-configuration-prop | fgrep single-structural-objectclass-behavior | fgrep accept",
-#    require           => Service['opendj'],
-#  }
+  # Now install any custom schemas defined in hiera
+  validate_hast($custom_schemas)
+  define install_schema_file($filename=$title, $content=$content) {
+    file { "$filename":
+      content         => "$content",
+      notify          => Service['opendj'],
+    }
+  }
+
+  create_resources (install_schema_file, $custom_schemas)
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
