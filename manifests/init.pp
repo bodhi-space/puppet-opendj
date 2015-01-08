@@ -142,7 +142,7 @@ class opendj (
   } ~>
 
   exec { "configure opendj":
-    command           => "/bin/su ${user} -s /bin/sh -c '${home}/setup --propertiesFilePath ${props_file}'",
+    command           => "/bin/su ${user} -s /bin/sh -c '${home}/setup --acceptLicense --propertiesFilePath ${props_file}'",
 #    command           => "/bin/su ${user} -s /bin/sh -c '${home}/setup -i -n -Q --acceptLicense --doNotStart --propertiesFilePath ${props_file}'",
     creates           => "${home}/config",
   } ~>
