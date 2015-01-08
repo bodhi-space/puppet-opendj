@@ -212,7 +212,7 @@ class opendj (
   create_resources (config_option, $config_options)
 
   # Now install any custom schemas defined in hiera
-  validate_hast($custom_schemas)
+  validate_hash($custom_schemas)
   define install_schema_file($filename=$title, $content=$content) {
     file { "$filename":
       content         => "$content",
