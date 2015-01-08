@@ -182,12 +182,13 @@ class opendj (
   }
 
   # 'extra_opts' can be any valid dsconfig option(s) - the most common use is to pass in '--advanced' for those opts which require it...
-  define config_option ($myopt=$title, $configopt='', $configclass='global-configuration', $qualifier='', $value=$value, $extra_opts='', $dsconfig, $user) {
-    validate_string($title)
+  define config_option ($myopt=$title, $configopt='', $configclass='global-configuration', $details='', $value=$value, $extra_opts='', $dsconfig, $user) {
+    validate_string($myopt)
     # By default the config option name will be directly in $title, but since hashes can't have duplicate keys, and
     # sometimes we need to create more than one setting with the same opt name, we provide a back-door variable to send another...
     validate_string($configopt)
     validate_string($configclass)
+    validate_string($details)
     validate_string($value)
     validate_string($extra_opts)
     if $configopt != '' {
@@ -195,15 +196,15 @@ class opendj (
     } else {
       $opt            = "$myopt"
     }
-    if $qualifier != '' {
-      $mytitle        = "set_${configclass}_${qualifier}_${opt}_to_${value}"
+    if $details != '' {
+      $mytitle        = "set_${configclass}_${details}_${opt}_to_${value}"
     } else {
       $mytitle        = "set_${configclass}_${opt}_to_${value}"
     }
     exec { "${mytitle}":
       require         => Service['opendj'],
-      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${qualifier} --set ${opt}:${value}'",
-      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${qualifier} --property ${opt} | fgrep ${value}'",
+      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${details} --set ${opt}:${value}'",
+      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${details} --property ${opt} | fgrep ${value}'",
     }
   }
 
