@@ -7,7 +7,7 @@ hostname                        =<%= @host %>
 ldapPort                        =<%= @ldap_port %>
 <% if enable_tls %>
 enableStartTLS                  =true
-  <% if pkcs12_keystore == nil %>
+  <% if pkcs12_keystore == '' %>
 generateSelfSignedCertificate   =true
   <% else %>
 generateSelfSignedCertificate   =false
@@ -23,7 +23,7 @@ adminConnectorPort              =<%= @admin_port %>
 rootUserDN                      =<%= @admin_user %>
 rootUserPassword                =<%= @admin_password %>
 baseDN                          =<%= @base_dn %>
-<% if ldiffile == nil %>
+<% if ldiffile == '' %>
 addBaseEntry                    =true
 <% else %>
 addBaseEntry                    =false

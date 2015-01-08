@@ -29,11 +29,12 @@ class opendj (
   $tmp                = hiera('opendj::tmpdir', '/tmp'),
   $packages           = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, 'jre' => { 'ensure' => 'present', }, }),
   $enable_tls         = hiera('opendj::enable_tls', true),
-  $pkcs12_keystore    = hiera('opendj::pkcs12_keystore', undef),
+  $pkcs12_keystore    = hiera('opendj::pkcs12_keystore', ''),
+  $pkcs12_keydata     = hiera('opendj::pkcs12_keydata', ''),
   $keystore_pass      = hiera('opendj::keystore_pass', undef),
   $keystore_pass_file = hiera('opendj::keystore_pass_file', ''),
   $config_options     = hiera('opendj::config_options', {}),
-  $ldiffile           = hiera('opendj::ldiffile', undef),
+  $ldiffile           = hiera('opendj::ldiffile', ''),
   $master             = hiera('opendj::master', undef),
   $java_properties    = hiera('opendj::java_properties', undef),
 ) {
@@ -53,6 +54,9 @@ class opendj (
   $props_file         = "/dev/shm/opendj.properties"
   $pkgs               = keys($packages)
 
+  # XXX for the moment, we make no effort to ensure the parent directories exist...
+  # If you don't like this, then bump the (over 9 years old and counting) ticket on the
+  # PuppetLabs tracker requesting 'mkdir -p' functionality... http://projects.puppetlabs.com/issues/86
   if $admin_pass_file != '' {
     file { "${admin_pass_file}":
       ensure          => file,
@@ -63,7 +67,6 @@ class opendj (
       before          => Exec['configure opendj'],
     }
   }
-
   if $keystore_pass_file != '' {
     file { "${keystore_pass_file}":
       ensure          => file,
@@ -72,6 +75,26 @@ class opendj (
       mode            => 0600,
       content         => "$keystore_pass",
       before          => Exec['configure opendj'],
+    }
+  }
+  # If $pkcs12_keydata is NOT populated, then you MUST put the keystore in place by hand before applying this module.
+  if $pkcs12_keystore != '' {
+    if $pkcs12_keydata  != ''{
+      $keystore_dir     = dirname("${pkcs12_keystore}")
+      file { "${keystore_dir}":
+        ensure          => directory,
+        owner           => $user,
+        group           => $group,
+        mode            => 0700,
+      }
+      file { "${pkcs12_keystore}":
+        ensure          => file,
+        owner           => $user,
+        group           => $group,
+        mode            => 0600,
+        content         => "${pkcs12_keydata"},
+        before          => Exec['configure opendj'],
+      }
     }
   }
 
