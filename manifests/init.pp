@@ -181,28 +181,30 @@ class opendj (
     user              => $user,
   }
 
-  define config_option ($opt=$title, $configopt='', $configclass='global-configuration', $policy='', $value=$value, $extra_opts='', $dsconfig, $user) {
+  define config_option ($myopt=$title, $configopt='', $configclass='global-configuration', $policy='', $value=$value, $extra_opts='', $dsconfig, $user) {
     validate_string($title)
     # By default the config option name will be directly in $title, but since hashes can't have duplicate keys, and
-    # sometimes we need to create more than one setting with the same opt name, we provide a back-door to send another...
+    # sometimes we need to create more than one setting with the same opt name, we provide a back-door variable to send another...
     validate_string($configopt)
     validate_string($configclass)
     validate_string($value)
     validate_string($extra_opts)
     if $configopt != '' {
       $opt            = "$configopt"
+    } else {
+      $opt            = "$myopt"
     }
     if $policy != '' {
       $policy_opt     = "--policy-name \"${policy}\""
-      $mytitle        = "set_${configclass}_${policy}_${configopt}_to_${value}"
+      $mytitle        = "set_${configclass}_${policy}_${opt}_to_${value}"
     } else {
       $policy_opt     = ''
-      $mytitle        = "set_${configclass}_${configopt}_to_${value}"
+      $mytitle        = "set_${configclass}_${opt}_to_${value}"
     }
     exec { "${mytitle}":
       require         => Service['opendj'],
-      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${policy_opt} --set ${configopt}:${value}'",
-      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${policy_opt} --property ${configopt} | fgrep ${value}'",
+      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${policy_opt} --set ${opt}:${value}'",
+      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${policy_opt} --property ${opt} | fgrep ${value}'",
     }
   }
 
