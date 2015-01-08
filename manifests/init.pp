@@ -92,7 +92,7 @@ class opendj (
         owner           => $user,
         group           => $group,
         mode            => 0600,
-        content         => "${pkcs12_keydata"},
+        content         => "${pkcs12_keydata}",
         before          => Exec['configure opendj'],
       }
     }
