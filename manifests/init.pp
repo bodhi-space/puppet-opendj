@@ -25,7 +25,7 @@ class opendj (
   $user               = hiera('opendj::user', 'opendj'),
   $group              = hiera('opendj::group', 'opendj'),
   $manage_user        = hiera('opendj::manage_user', true),
-  $host               = hiera('opendj::host', $fqdn),
+  $host               = hiera('opendj::host', $::fqdn),
   $tmp                = hiera('opendj::tmpdir', '/tmp'),
   $packages           = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, 'jre' => { 'ensure' => 'present', }, }),
   $enable_tls         = hiera('opendj::enable_tls', true),
@@ -34,6 +34,7 @@ class opendj (
   $keystore_pass      = hiera('opendj::keystore_pass', undef),
   $keystore_pass_file = hiera('opendj::keystore_pass_file', ''),
   $config_options     = hiera('opendj::config_options', {}),
+  $global_acis        = hiera('opendj::global_acis', {}),
   $ldiffile           = hiera('opendj::ldiffile', ''),
   $custom_schemas     = hiera('opendj::schemas', {}),
   $master             = hiera('opendj::master', undef),
@@ -42,16 +43,30 @@ class opendj (
 
   if $admin_pass_file == '' {
     $passwd_data      = "-w \"${admin_password}\""
+    $oldap_passwd_data = "-w \"${admin_password}\""
   } else {
     $passwd_data      = "-j \"${admin_pass_file}\""
+    $oldap_passwd_data = "-y \"${admin_pass_file}\""
+  }
+  if $enable_tls {
+    $starttls         = '-ZZ'
+  } else {
+    $starttls         = ''
+  }
+  if "$ldap_port" != "389" {
+    $port             = ":$ldap_port"
+  } else {
+    $port             = ''
   }
   $common_opts        = "-h localhost -D \"${admin_user}\" ${passwd_data}"
+  $oldap_common_opts  = "-x ${starttls} -H ldap://${host}${port}/ -D \"${admin_user}\" $oldap_passwd_data"
   $status             = "${home}/bin/status -D \"${admin_user}\" ${passwd_data}"
-  $ldapsearch         = "${home}/bin/ldapsearch ${common_opts} -p ${ldap_port}"
+  # OpenDJ ldapsearch does not work for me for some reason - we'll use OpenLDAP's instead
+  $ldapsearch         = "/usr/bin/ldapsearch -LLL ${oldap_common_opts} -p ${ldap_port}"
   $ldapmodify         = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
   $dsconfig           = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
   $dsreplication      = "${home}/bin/dsreplication --adminUID admin ${passwd_data} -X -n"
-# props_file Contains passwords, thus (temporarily) stored in /dev/shm
+  # props_file contains passwords, thus (temporarily) stored in /dev/shm
   $props_file         = "/dev/shm/opendj.properties"
   $pkgs               = keys($packages)
 
@@ -175,7 +190,18 @@ class opendj (
     }
   }
 
-  # default values - hacky way of passing in global variables since define()s can't see surrounding scope :-/
+  # Now install any custom schemas defined in hiera
+  validate_hash($custom_schemas)
+  define install_schema_file($filename=$title, $content=$content) {
+    file { "$filename":
+      content         => "$content",
+      notify          => Service['opendj'],
+    }
+  }
+
+  create_resources (install_schema_file, $custom_schemas)
+
+  # Default values - hacky way of passing in global variables since define()s can't see surrounding scope :-/
   Opendj::Config_option {
     dsconfig          => $dsconfig,
     user              => $user,
@@ -204,22 +230,41 @@ class opendj (
     exec { "${mytitle}":
       require         => Service['opendj'],
       command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${details} --set ${opt}:${value}'",
-      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${details} --property ${opt} | fgrep ${value}'",
+      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${details} --property ${opt} | fgrep -q \"${value}\"'",
     }
   }
 
   create_resources (config_option, $config_options)
 
-  # Now install any custom schemas defined in hiera
-  validate_hash($custom_schemas)
-  define install_schema_file($filename=$title, $content=$content) {
-    file { "$filename":
-      content         => "$content",
-      notify          => Service['opendj'],
+  Opendj::Set_aci {
+    dsconfig          => $dsconfig,
+    user              => $user,
+    ldapsearch        => $ldapsearch,
+  }
+
+  # Wanted to work this into the above config_option() logic but had to use OpenLDAP ldapsearch for 'unless' check
+  # instead of either OpenDJ's dsconfig or ldapsearch.  Note that this (currently) only handles global-acis.
+  # $operation must be one of 'add' or 'remove'.
+  define set_aci ($description=$title, $operation='add', $aci=$aci, $dsconfig, $user, $ldapsearch) {
+    # ACIs must have a unique description - leverage that for our hash
+    validate_string($description)
+    validate_string($operation)
+    validate_string($aci)
+    if $operation == 'add' {
+      exec { "${operation}_aci_${description}":
+        require         => Service['opendj'],
+        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
+        unless          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      }
+    } else {
+      exec { "${operation}_aci_${description}":
+        require         => Service['opendj'],
+        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
+        onlyif          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
     }
   }
 
-  create_resources (install_schema_file, $custom_schemas)
+  create_resources (set_aci, $global_acis)
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
