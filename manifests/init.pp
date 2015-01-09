@@ -250,7 +250,7 @@ class opendj (
     validate_string($operation)
     validate_string($scope)
     validate_string($aci)
-    $test_aci         = inline_template("<% require 'base64' %><%= Base64.strict_encode64('${aci}') %>")
+    $test_aci         = inline_template("<% require 'base64' %><%= Base64.encode64('${aci}') %>")
     $bdn              = 'cn=Access Control Handler,cn=config'
     $reqs             = [ Service['opendj'], File[$schema_deps], ]
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
