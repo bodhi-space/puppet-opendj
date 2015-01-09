@@ -253,13 +253,13 @@ class opendj (
       exec { "${operation}_aci_${description}":
         require         => [ Service['opendj'], File[ keys($custom_schemas) ],
         command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
-        unless          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+        unless          => "${ldapsearch} -b 'cn=Access Control Handler,cn=config' '(ds-cfg-global-aci=*${description}*)' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
       }
     } else {
       exec { "${operation}_aci_${description}":
         require         => [ Service['opendj'], File[ keys($custom_schemas) ],
         command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
-        onlyif          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+        onlyif          => "${ldapsearch} -b 'cn=Access Control Handler, cn=config' '(ds-cfg-global-aci=*${description}*)' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
     }
   }
 
