@@ -269,7 +269,7 @@ class opendj (
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
-      require         => [ Service['opendj'], File[ keys($custom_schemas) ],
+      require         => [ Service['opendj'], File[keys($custom_schemas)], ],
       command         => "/bin/su ${user} -s /bin/sh -c \"${dsreplication} enable --baseDN '${base_dn}' \
           --host1 ${master} --port1 ${admin_port} --replicationPort1 ${repl_port} \
           --host2 ${host}   --port2 ${admin_port} --replicationPort2 ${repl_port} \"",
