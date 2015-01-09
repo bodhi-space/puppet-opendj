@@ -42,11 +42,11 @@ class opendj (
 ) {
 
   if $admin_pass_file == '' {
-    $passwd_data      = "-w \"${admin_password}\""
-    $oldap_passwd_data = "-w \"${admin_password}\""
+    $passwd_data      = "-w '${admin_password}'"
+    $oldap_passwd_data = "-w '${admin_password}'"
   } else {
-    $passwd_data      = "-j \"${admin_pass_file}\""
-    $oldap_passwd_data = "-y \"${admin_pass_file}\""
+    $passwd_data      = "-j '${admin_pass_file}'"
+    $oldap_passwd_data = "-y '${admin_pass_file}'"
   }
   if $enable_tls {
     $starttls         = '-ZZ'
@@ -58,9 +58,9 @@ class opendj (
   } else {
     $port             = ''
   }
-  $common_opts        = "-h localhost -D \"${admin_user}\" ${passwd_data}"
-  $oldap_common_opts  = "-x ${starttls} -H ldap://${host}${port}/ -D \"${admin_user}\" $oldap_passwd_data"
-  $status             = "${home}/bin/status -D \"${admin_user}\" ${passwd_data}"
+  $common_opts        = "-h localhost -D '${admin_user}' ${passwd_data}"
+  $oldap_common_opts  = "-x ${starttls} -H ldap://${host}${port}/ -D '${admin_user}' $oldap_passwd_data"
+  $status             = "${home}/bin/status -D '${admin_user}' ${passwd_data}"
   # OpenDJ ldapsearch does not work for me for some reason - we'll use OpenLDAP's instead
   $ldapsearch         = "/usr/bin/ldapsearch -LLL ${oldap_common_opts} -p ${ldap_port}"
   $ldapmodify         = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
