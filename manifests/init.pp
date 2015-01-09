@@ -228,8 +228,8 @@ class opendj (
     }
     exec { "${mytitle}":
       require         => Service['opendj'],
-      command         => "/bin/su ${user} -c '${dsconfig} ${extra_opts} set-${configclass}-prop ${details} --set ${opt}:${value}'",
-      unless          => "/bin/su ${user} -c '${dsconfig} ${extra_opts} -s get-${configclass}-prop ${details} --property ${opt} | fgrep -q \"${value}\"'",
+      command         => "/bin/su ${user} -c \"${dsconfig} ${extra_opts} set-${configclass}-prop ${details} --set ${opt}:${value}\"",
+      unless          => "/bin/su ${user} -c \"${dsconfig} ${extra_opts} -s get-${configclass}-prop ${details} --property ${opt} | fgrep -q '${value}'\"",
     }
   }
 
