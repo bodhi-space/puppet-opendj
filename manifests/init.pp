@@ -250,24 +250,23 @@ class opendj (
     validate_string($operation)
     validate_string($scope)
     validate_string($aci)
-    $fixed_aci          = regsubst($aci, '"', '\"', 'G')
-    $reqs               = [ Service['opendj'], File[$schema_deps], ]
-    $cmd                = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
-    $test               = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
-    notice("\$test -> $test")
-    $nam                = "${operation}_${scope}_aci_${description}"
-    $bdn                = 'cn=Access Control Handler,cn=config'
+    bdn               = 'cn=Access Control Handler,cn=config'
+    $reqs             = [ Service['opendj'], File[$schema_deps], ]
+    $fixed_aci        = regsubst($aci, '"', '\"', 'G')
+    $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
+    $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
+    $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
       exec { "${nam}":
-        require         => $reqs,
-        command         => $cmd,
-        unless          => $test,
+        require       => $reqs,
+        command       => $cmd,
+        unless        => $test,
       }
     } else {
       exec { "${nam}":
-        require         => $reqs,
-        command         => $cmd,
-        onlyif          => $test,
+        require       => $reqs,
+        command       => $cmd,
+        onlyif        => $test,
       }
     }
   }
