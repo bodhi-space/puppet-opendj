@@ -250,7 +250,7 @@ class opendj (
     validate_string($operation)
     validate_string($scope)
     validate_string($aci)
-    bdn               = 'cn=Access Control Handler,cn=config'
+    $bdn               = 'cn=Access Control Handler,cn=config'
     $reqs             = [ Service['opendj'], File[$schema_deps], ]
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
     $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
