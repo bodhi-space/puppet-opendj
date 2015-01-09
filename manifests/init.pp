@@ -250,11 +250,12 @@ class opendj (
     validate_string($operation)
     validate_string($scope)
     validate_string($aci)
-    $bdn               = 'cn=Access Control Handler,cn=config'
+    $test_aci         = inline_template("<% require base64; foo = Base64.encode64('${aci}') %><%= @foo %>")
+    $bdn              = 'cn=Access Control Handler,cn=config'
     $reqs             = [ Service['opendj'], File[$schema_deps], ]
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
     $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
-    $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}'"
+    $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}\n${test_aci}'"
     notify { "$test": }
     $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
