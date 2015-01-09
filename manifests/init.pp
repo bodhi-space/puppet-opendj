@@ -262,6 +262,7 @@ class opendj (
         require         => [ Service['opendj'], File[keys($custom_schemas)], ],
         command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'",
         onlyif          => "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      }
     }
   }
 
