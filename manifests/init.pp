@@ -242,24 +242,29 @@ class opendj (
   }
 
   # Wanted to work this into the above config_option() logic but had to use OpenLDAP ldapsearch for 'unless' check
-  # instead of either OpenDJ's dsconfig or ldapsearch.  Note that this (currently) only handles global-acis.
-  # $operation must be one of 'add' or 'remove'.
-  define set_aci ($description=$title, $operation='add', $aci=$aci, $dsconfig, $user, $ldapsearch) {
-    # ACIs must have a unique description - leverage that for our hash
+  # instead of either OpenDJ's dsconfig or ldapsearch.  $operation must be one of 'add' or 'remove'.
+  define set_aci ($description=$title, $operation='add', $scope='global-aci', $aci=$aci, $dsconfig, $user, $ldapsearch) {
+    # ACIs must have a unique description tag - leverage that for our hash
     validate_string($description)
     validate_string($operation)
+    validate_string($scope)
     validate_string($aci)
+    $nam                = "${operation}_${scope}_aci_${description}"
+    $bdn                = 'cn=Access Control Handler,cn=config'
+    $req                = [ Service['opendj'], File[ keys($custom_schemas) ]
+    $cmd                = "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'"
+    $cnd                = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
     if $operation == 'add' {
-      exec { "${operation}_aci_${description}":
-        require         => [ Service['opendj'], File[ keys($custom_schemas) ],
-        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
-        unless          => "${ldapsearch} -b 'cn=Access Control Handler,cn=config' '(ds-cfg-global-aci=*${description}*)' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      exec { "${nam}":
+        require         => "${req}",
+        command         => "${cmd}",
+        unless          => "${cnd}",
       }
     } else {
-      exec { "${operation}_aci_${description}":
-        require         => [ Service['opendj'], File[ keys($custom_schemas) ],
-        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
-        onlyif          => "${ldapsearch} -b 'cn=Access Control Handler, cn=config' '(ds-cfg-global-aci=*${description}*)' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      exec { "${nam}":
+        require         => "${req}",
+        command         => "${cmd}",
+        onlyif          => "${cnd}",
     }
   }
 
