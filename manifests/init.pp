@@ -62,7 +62,7 @@ class opendj (
   $oldap_common_opts  = "-x ${starttls} -H ldap://${host}${port}/ -D '${admin_user}' $oldap_passwd_data"
   $status             = "${home}/bin/status -D '${admin_user}' ${passwd_data}"
   # OpenDJ ldapsearch does not work for me for some reason - we'll use OpenLDAP's instead
-  $ldapsearch         = "/usr/bin/ldapsearch -LLL ${oldap_common_opts} -p ${ldap_port}"
+  $ldapsearch         = "/usr/bin/ldapsearch -LLL ${oldap_common_opts}"
   $ldapmodify         = "${home}/bin/ldapmodify ${common_opts} -p ${ldap_port}"
   $dsconfig           = "${home}/bin/dsconfig ${common_opts} -p ${admin_port} -X -n"
   $dsreplication      = "${home}/bin/dsreplication --adminUID admin ${passwd_data} -X -n"
@@ -255,11 +255,7 @@ class opendj (
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
     $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
     $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}'"
-    notice ( "$test" )
-    notify { "$test":
-      message   => "$test",
-      loglevel  => 'notice';
-    }
+    #notice ( "$test" )
     $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
       exec { "${nam}":
