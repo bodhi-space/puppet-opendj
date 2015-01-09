@@ -258,13 +258,13 @@ class opendj (
       exec { "${nam}":
         require         => "${req}",
         command         => "${cmd}",
-#        unless          => "${cnd}",
+        unless          => "${cnd}",
       }
     } else {
       exec { "${nam}":
         require         => "${req}",
         command         => "${cmd}",
-#        onlyif          => "${cnd}",
+        onlyif          => "${cnd}",
     }
   }
 
