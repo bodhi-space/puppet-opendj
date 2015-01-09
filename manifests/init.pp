@@ -253,8 +253,10 @@ class opendj (
     $bdn               = 'cn=Access Control Handler,cn=config'
     $reqs             = [ Service['opendj'], File[$schema_deps], ]
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
+    # Oh. My. God.  So apparently some ACIs are stored in OpenDJ as binary... ?
+    $base64_aci       = base64('encode', $aci)
     $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
-    $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}'"
+    $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}\n${base64_aci}'"
     notify { "$test": }
     $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
