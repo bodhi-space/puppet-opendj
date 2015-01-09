@@ -255,15 +255,15 @@ class opendj (
     $cnd                = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
     if $operation == 'add' {
       exec { "${nam}":
-        require         => [ Service['opendj'], File[keys($custom_schemas)] ],
-        command         => "${cmd}",
-        unless          => "${cnd}",
+        require         => [ Service['opendj'], File[keys($custom_schemas)], ],
+        command         => ${cmd},
+        unless          => ${cnd},
       }
     } else {
       exec { "${nam}":
-        require         => [ Service['opendj'], File[keys($custom_schemas)] ],
-        command         => "${cmd}",
-        onlyif          => "${cnd}",
+        require         => [ Service['opendj'], File[keys($custom_schemas)], ],
+        command         => ${cmd},
+        onlyif          => ${cnd},
     }
   }
 
