@@ -68,7 +68,6 @@ class opendj (
   $dsreplication      = "${home}/bin/dsreplication --adminUID admin ${passwd_data} -X -n"
   # props_file contains passwords, thus (temporarily) stored in /dev/shm
   $props_file         = "/dev/shm/opendj.properties"
-  $pkgs               = keys($packages)
 
   # XXX for the moment, we make no effort to ensure the parent directories exist...
   # If you don't like this, then bump the (over 9 years old and counting) ticket on the
@@ -137,7 +136,7 @@ class opendj (
       home            => "${home}",
       shell           => '/sbin/nologin',
       managehome      => true,
-      require         => Package[ $pkgs ],
+      require         => Package[ keys($packages) ],
       before          => File[ "${home}" ],
     }
   }
@@ -146,7 +145,7 @@ class opendj (
     ensure            => directory,
     owner             => $user,
     group             => $group,
-    require           => Package[ $pkgs ],
+    require           => Package[ keys($packages) ],
   } ->
 
   file { "${props_file}":
@@ -252,13 +251,13 @@ class opendj (
     validate_string($aci)
     if $operation == 'add' {
       exec { "${operation}_aci_${description}":
-        require         => Service['opendj'],
+        require         => [ Service['opendj'], File[ keys($custom_schemas) ],
         command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
         unless          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
       }
     } else {
       exec { "${operation}_aci_${description}":
-        require         => Service['opendj'],
+        require         => [ Service['opendj'], File[ keys($custom_schemas) ],
         command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${aci}'",
         onlyif          => "${ldapsearch} -b 'cn=config' ds-cfg-global-aci='*$description*' ds-cfg-global-aci | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
     }
@@ -268,7 +267,7 @@ class opendj (
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
-      require         => Service['opendj'],
+      require         => [ Service['opendj'], File[ keys($custom_schemas) ],
       command         => "/bin/su ${user} -s /bin/sh -c \"${dsreplication} enable --baseDN '${base_dn}' \
           --host1 ${master} --port1 ${admin_port} --replicationPort1 ${repl_port} \
           --host2 ${host}   --port2 ${admin_port} --replicationPort2 ${repl_port} \"",
