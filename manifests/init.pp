@@ -239,29 +239,33 @@ class opendj (
     dsconfig          => $dsconfig,
     user              => $user,
     ldapsearch        => $ldapsearch,
+    schema_deps       => keys($custom_schemas),
   }
 
   # Wanted to work this into the above config_option() logic but had to use OpenLDAP ldapsearch for 'unless' check
   # instead of either OpenDJ's dsconfig or ldapsearch.  $operation must be one of 'add' or 'remove'.
-  define set_aci ($description=$title, $operation='add', $scope='global-aci', $aci=$aci, $dsconfig, $user, $ldapsearch) {
+  define set_aci ($description=$title, $operation='add', $scope='global-aci', $aci=$aci, $dsconfig, $user, $ldapsearch, $schema_deps) {
     # ACIs must have a unique description tag - leverage that for our hash
     validate_string($description)
     validate_string($operation)
     validate_string($scope)
     validate_string($aci)
+    $reqs               = [ Service['opendj'], File[$schema_deps], ]
+    $cmd                = "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'"
+    $test               = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
     $nam                = "${operation}_${scope}_aci_${description}"
     $bdn                = 'cn=Access Control Handler,cn=config'
     if $operation == 'add' {
-      exec { "${nam}":
-        require         => [ Service['opendj'], File[keys($custom_schemas)], ],
-        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'",
-        unless          => "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      exec { ${nam}:
+        require         => $reqs,
+        command         => $cmd,
+        unless          => $test,
       }
     } else {
-      exec { "${nam}":
-        require         => [ Service['opendj'], File[keys($custom_schemas)], ],
-        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'",
-        onlyif          => "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
+      exec { ${nam}:
+        require         => $reqs,
+        command         => $cmd,
+        onlyif          => $test,
       }
     }
   }
