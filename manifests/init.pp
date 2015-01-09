@@ -254,6 +254,7 @@ class opendj (
     $reqs               = [ Service['opendj'], File[$schema_deps], ]
     $cmd                = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
     $test               = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
+    notice("\$test -> $test")
     $nam                = "${operation}_${scope}_aci_${description}"
     $bdn                = 'cn=Access Control Handler,cn=config'
     if $operation == 'add' {
