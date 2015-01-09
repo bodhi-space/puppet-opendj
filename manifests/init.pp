@@ -251,19 +251,17 @@ class opendj (
     validate_string($aci)
     $nam                = "${operation}_${scope}_aci_${description}"
     $bdn                = 'cn=Access Control Handler,cn=config'
-    $cmd                = "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'"
-    $cnd                = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
     if $operation == 'add' {
       exec { "${nam}":
         require         => [ Service['opendj'], File[keys($custom_schemas)], ],
-        command         => ${cmd},
-        unless          => ${cnd},
+        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'",
+        unless          => "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
       }
     } else {
       exec { "${nam}":
         require         => [ Service['opendj'], File[keys($custom_schemas)], ],
-        command         => ${cmd},
-        onlyif          => ${cnd},
+        command         => "/bin/su ${user} -c '${dsconfig} set-access-control-handler-prop --${operation} ${scope}:${aci}'",
+        onlyif          => "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'",
     }
   }
 
