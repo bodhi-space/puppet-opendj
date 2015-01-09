@@ -258,7 +258,7 @@ class opendj (
     notice ( "$test" )
     notify { "$test":
       message   => "$test",
-      loglevel  => 'warn';
+      loglevel  => 'notice';
     }
     $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
