@@ -256,13 +256,13 @@ class opendj (
     $nam                = "${operation}_${scope}_aci_${description}"
     $bdn                = 'cn=Access Control Handler,cn=config'
     if $operation == 'add' {
-      exec { ${nam}:
+      exec { "${nam}":
         require         => $reqs,
         command         => $cmd,
         unless          => $test,
       }
     } else {
-      exec { ${nam}:
+      exec { "${nam}":
         require         => $reqs,
         command         => $cmd,
         onlyif          => $test,
