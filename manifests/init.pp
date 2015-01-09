@@ -256,13 +256,13 @@ class opendj (
     $cnd                = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\n //;ba}' | fgrep -q '${aci}'"
     if $operation == 'add' {
       exec { "${nam}":
-        require         => "${req}",
+        require         => ${req},
         command         => "${cmd}",
         unless          => "${cnd}",
       }
     } else {
       exec { "${nam}":
-        require         => "${req}",
+        require         => ${req},
         command         => "${cmd}",
         onlyif          => "${cnd}",
     }
