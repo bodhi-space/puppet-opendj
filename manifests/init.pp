@@ -124,9 +124,9 @@ class opendj (
 
   create_resources(force_package, $packages)
 
-  #group { "${group}":
-  #  ensure            => "present",
-  #}
+  group { "${group}":
+    ensure            => "present",
+  }
 
   if $manage_user {
     user { "${user}":
