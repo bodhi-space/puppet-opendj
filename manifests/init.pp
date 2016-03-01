@@ -137,7 +137,7 @@ class opendj (
       shell           => '/sbin/nologin',
       managehome      => true,
       require         => Package[ keys($packages) ],
-      before          => File[ "${home}" ],
+#      before          => File[ "${home}" ],
     }
   }
 
