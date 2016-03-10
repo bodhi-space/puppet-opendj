@@ -190,15 +190,28 @@ class opendj (
   }
 
   # Now install any custom schemas defined in hiera
-  validate_hash($custom_schemas)
-  define install_schema_file($filename=$title, $content=$content) {
-    file { "$filename":
-      content         => "$content",
-      notify          => Service['opendj'],
+  Opendj::Schema_file_with_lines {
+    packages => keys($packages),
+    notify   => Service['opendj'],
+  }
+  define schema_file_with_lines ($blah=$title, $lines=$lines, $packages) {
+    validate_hash($lines)
+    validate_array($packages)
+    $defaults_schema = {
+      'notify'  => Service['opendj'],
+      'require' => File["$blah"],
+      'path'    => "${blah}",
     }
+    file { "${blah}":
+      ensure            => file,
+      owner             => $user,
+      group             => $group,
+      require           => Package[ $packages ],
+    }
+    create_resources(file_line, $lines, $defaults_schema)
   }
 
-  create_resources (install_schema_file, $custom_schemas)
+  create_resources(schema_file_with_lines, $custom_schemas)
 
   # Default values - hacky way of passing in global variables since define()s can't see surrounding scope :-/
   Opendj::Config_option {
@@ -251,11 +264,10 @@ class opendj (
     validate_string($scope)
     validate_string($aci)
     $bdn              = 'cn=Access Control Handler,cn=config'
-    $reqs             = [ Service['opendj'], File[$schema_deps], ]
+    $reqs             = Service['opendj']
     $fixed_aci        = regsubst($aci, '"', '\"', 'G')
     $cmd              = "/bin/su ${user} -c \"${dsconfig} set-access-control-handler-prop --${operation} '${scope}:${fixed_aci}'\""
     $test             = "${ldapsearch} -b '${bdn}' '(ds-cfg-${scope}=*${description}*)' ds-cfg-${scope} | sed ':a;/^[^ ]/{N;s/\\n //;ba}' | fgrep -q '${aci}'"
-    #notify { "$test": }
     $nam              = "${operation}_${scope}_aci_${description}"
     if $operation == 'add' {
       exec { "${nam}":
@@ -276,7 +288,7 @@ class opendj (
 
   if ($master != '' and $host != $master) {
     exec { "enable replication":
-      require         => [ Service['opendj'], File[keys($custom_schemas)], ],
+      require         => Service['opendj'],
       command         => "/bin/su ${user} -s /bin/sh -c \"${dsreplication} enable --baseDN '${base_dn}' \
           --host1 ${master} --port1 ${admin_port} --replicationPort1 ${repl_port} \
           --host2 ${host}   --port2 ${admin_port} --replicationPort2 ${repl_port} \"",
