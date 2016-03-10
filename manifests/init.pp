@@ -190,15 +190,12 @@ class opendj (
   }
 
   # Now install any custom schemas defined in hiera
-  validate_hash($custom_schemas)
-  define install_schema_file($filename=$title, $content=$content) {
-    file { "$filename":
-      content         => "$content",
+  $defaults_notify = {
       notify          => Service['opendj'],
-    }
   }
+  validate_hash($custom_schemas)
+  create_resources(file_line, $custom_schemas, $defaults)
 
-  create_resources (install_schema_file, $custom_schemas)
 
   # Default values - hacky way of passing in global variables since define()s can't see surrounding scope :-/
   Opendj::Config_option {
