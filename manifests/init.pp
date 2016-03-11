@@ -127,7 +127,7 @@ class opendj (
   # Work around circular dependancies issue (INFRA-1460) by not using Group[]
   exec { "create group ${group}":
     command => "/usr/sbin/groupadd '${group}'",
-    unless => "/usr/bin/getent '${group}'",
+    unless => "/usr/bin/getent group '${group}'",
   }
 
   if $manage_user {
