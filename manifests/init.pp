@@ -125,7 +125,8 @@ class opendj (
   create_resources(force_package, $packages)
 
   # Work around circular dependancies issue (INFRA-1460) by not using Group[]
-  exec { "/usr/sbin/groupadd '${group'":
+  exec { "create group ${group}":
+    command => "/usr/sbin/groupadd '${group}'",
     unless => "/usr/bin/getent '${group}'",
   }
 
