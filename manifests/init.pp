@@ -124,8 +124,9 @@ class opendj (
 
   create_resources(force_package, $packages)
 
-  group { "${group}":
-    ensure            => "present",
+  # Work around circular dependancies issue (INFRA-1460) by not using Group[]
+  exec { "/usr/sbin/groupadd '${group'":
+    unless => "/usr/bin/getent '${group}'",
   }
 
   if $manage_user {
