@@ -77,7 +77,7 @@ class opendj (
       ensure          => file,
       owner           => $user,
       group           => $group,
-      mode            => 0600,
+      mode            => 0440,
       content         => "$admin_password",
       before          => Exec['configure opendj'],
     }
