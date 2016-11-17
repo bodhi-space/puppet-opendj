@@ -27,7 +27,7 @@ class opendj (
   $manage_user        = hiera('opendj::manage_user', true),
   $host               = hiera('opendj::host', $::fqdn),
   $tmp                = hiera('opendj::tmpdir', '/tmp'),
-  $packages           = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, 'jre' => { 'ensure' => 'present', }, }),
+  $packages           = hiera('opendj::packages', { 'opendj' => { 'ensure' => 'present', }, }),
   $enable_tls         = hiera('opendj::enable_tls', true),
   $pkcs12_keystore    = hiera('opendj::pkcs12_keystore', ''),
   $pkcs12_keydata     = hiera('opendj::pkcs12_keydata', ''),
