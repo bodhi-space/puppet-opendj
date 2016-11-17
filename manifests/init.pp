@@ -77,7 +77,7 @@ class opendj (
       ensure          => file,
       owner           => $user,
       group           => $group,
-      mode            => 0440,
+      mode            => '0440',
       content         => "$admin_password",
       before          => Exec['configure opendj'],
     }
@@ -87,7 +87,7 @@ class opendj (
       ensure          => file,
       owner           => $user,
       group           => $group,
-      mode            => 0600,
+      mode            => '0600',
       content         => "$keystore_pass",
       before          => Exec['configure opendj'],
     }
@@ -100,13 +100,13 @@ class opendj (
         ensure          => directory,
         owner           => $user,
         group           => $group,
-        mode            => 0700,
+        mode            => '0700',
       }
       file { "${pkcs12_keystore}":
         ensure          => file,
         owner           => $user,
         group           => $group,
-        mode            => 0600,
+        mode            => '0600',
         content         => "${pkcs12_keydata}",
         before          => Exec['configure opendj'],
       }
@@ -155,7 +155,7 @@ class opendj (
     content           => template("${module_name}/setup.erb"),
     owner             => $user,
     group             => $group,
-    mode              => 0600,
+    mode              => '0600',
   } ~>
 
   exec { "configure opendj":
