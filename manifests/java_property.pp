@@ -20,6 +20,6 @@ define opendj::java_property($value) {
     line    => "${title}=${value}",
     match   => "^(${title}=).*$",
     require => Exec["configure opendj"],
-    notify  => Exec["apply java properties"],
+    notify  => [ Exec["apply java properties"], Service["opendj"], ],
   }
 }
