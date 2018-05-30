@@ -309,9 +309,12 @@ class opendj (
     validate_hash($java_properties)
     create_resources('opendj::java_property', $java_properties)
 
+    # OpenDJ 4 drops this command and it is no longer required.
     exec { "apply java properties":
       command         => "/bin/su ${user} -s /bin/sh -c '${home}/bin/dsjavaproperties'",
-      notify          => Service['opendj'],
+      onlyif          => "/usr/bin/test -x '${home}/bin/dsjavaproperties'",
+      refreshonly     => true,
+      before          => Service["opendj"],
     }
   }
 }
